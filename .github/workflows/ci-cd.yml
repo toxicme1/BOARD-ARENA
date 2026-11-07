@@ -11,6 +11,7 @@ env:
   NODE_VERSION: '20.x'
   JAVA_VERSION: '17'
   ANDROID_API_LEVEL: 34
+  ANDROID_BUILD_TOOLS_VERSION: '34.0.0'
 
 jobs:
   lint-and-typecheck:
@@ -84,13 +85,17 @@ jobs:
           cache: 'gradle'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          api-level: ${{ env.ANDROID_API_LEVEL }}
-          build-tools-version: '34.0.0'
-
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses || true
+        run: |
+          # Use pre-installed Android SDK on GitHub runners
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+          
+          # Accept licenses
+          yes | sdkmanager --licenses || true
+          
+          # Install required packages (no deprecated 'tools')
+          sdkmanager "platform-tools" "platforms;android-${{ env.ANDROID_API_LEVEL }}" "build-tools;${{ env.ANDROID_BUILD_TOOLS_VERSION }}"
 
       - name: Install dependencies
         run: npm ci
