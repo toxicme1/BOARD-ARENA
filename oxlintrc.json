@@ -1,0 +1,14 @@
+{
+  "include": ["src/**/*.{ts,tsx}"],
+  "exclude": ["dist", "node_modules", ".vite"],
+  "rules": {
+    "no-unused-vars": "warn",
+    "no-console": "warn",
+    "react-hooks/exhaustive-deps": "warn"
+  },
+  "settings": {
+    "react": {
+      "version": "19"
+    }
+  }
+}
