@@ -2,12 +2,15 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, master, develop]
   pull_request:
-    branches: [main, develop]
+    branches: [main, master, develop]
+  workflow_dispatch:
 
 env:
   NODE_VERSION: '20.x'
+  JAVA_VERSION: '17'
+  ANDROID_SDK_VERSION: '34'
 
 jobs:
   lint-and-typecheck:
@@ -32,8 +35,8 @@ jobs:
       - name: Run ESLint
         run: npm run lint || npx eslint src --ext .ts,.tsx
 
-  build:
-    name: Build
+  build-web:
+    name: Build Web App
     runs-on: ubuntu-latest
     needs: lint-and-typecheck
     steps:
@@ -52,17 +55,76 @@ jobs:
       - name: Build application
         run: npm run build
 
-      - name: Upload build artifacts
+      - name: Upload web build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist
           retention-days: 7
 
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: 'gradle'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: ${{ env.ANDROID_SDK_VERSION }}
+          ndk-version: 'r27c'
+          build-tools-version: '34.0.0'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+        working-directory: ./android
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Build Release APK (unsigned)
+        run: ./gradlew assembleRelease
+        working-directory: ./android
+
+      - name: Upload Release APK (unsigned)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-unsigned-apk
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 30
+
   deploy-preview:
     name: Deploy Preview
     runs-on: ubuntu-latest
-    needs: build
+    needs: build-web
     if: github.event_name == 'pull_request'
     steps:
       - name: Download build artifacts
@@ -88,7 +150,7 @@ jobs:
   deploy-production:
     name: Deploy Production
     runs-on: ubuntu-latest
-    needs: build
+    needs: build-web
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Download build artifacts
