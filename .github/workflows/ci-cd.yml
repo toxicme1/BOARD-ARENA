@@ -86,7 +86,9 @@ jobs:
 
       - name: Setup Android SDK
         run: |
-          # Use pre-installed Android SDK on GitHub runners
+          # Android SDK is pre-installed at /usr/local/lib/android/sdk on GitHub runners
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
           echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
@@ -94,7 +96,7 @@ jobs:
           # Accept licenses
           yes | sdkmanager --licenses || true
           
-          # Install required packages (no deprecated 'tools')
+          # Install required packages
           sdkmanager "platform-tools" "platforms;android-${{ env.ANDROID_API_LEVEL }}" "build-tools;${{ env.ANDROID_BUILD_TOOLS_VERSION }}"
 
       - name: Install dependencies
@@ -109,6 +111,9 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
         working-directory: ./android
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
@@ -120,6 +125,9 @@ jobs:
       - name: Build Release APK (unsigned)
         run: ./gradlew assembleRelease
         working-directory: ./android
+        env:
+          ANDROID_HOME: /usr/local/lib/android/sdk
+          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
 
       - name: Upload Release APK (unsigned)
         uses: actions/upload-artifact@v4
