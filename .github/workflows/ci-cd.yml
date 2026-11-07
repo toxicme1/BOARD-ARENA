@@ -102,6 +102,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Patch Capacitor Android for Java 17
+        run: |
+          # Fix @capacitor/android to use Java 17 instead of 21
+          sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' node_modules/@capacitor/android/capacitor/build.gradle
+          sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' node_modules/@capacitor/android/capacitor/build.gradle
+          # Also fix capacitor-cordova-android-plugins
+          sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' android/capacitor-cordova-android-plugins/build.gradle
+          # Fix app build.gradle
+          sed -i '/compileSdk = rootProject.ext.compileSdkVersion/a\    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }' android/app/build.gradle
+
       - name: Build web app
         run: npm run build
 
